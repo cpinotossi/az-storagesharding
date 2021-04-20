@@ -66,13 +66,20 @@ The following ARM Template will deploy the corresponding Setup:
 PS C:\sbapp> az deployment group create --resource-group <RESOURCE-GROUP-NAME> --mode Incremental --name create --template-file ./arm/deploy.json
 ~~~~
 
-## DNS Entry
+### DNS Entry
 
 In case you like to test via your Domain directly you will need to add an A Record inside the corresponding DNS Zone and use the Application Gateway Public IP.
 
-## Azure Storage Access
+### Number of Storage Accounts
 
-Azure Storage Account are setup to only allow the Application Gateway and my own IP to access the corresponding Data:
+The ARM Template will deploy two Storage Account.
+The Application Gateway will load balance incoming request between both Storage Account.
+To make this work we will need to store the same Data under the same Container on both Storage Accounts.
+This will double our Storage cost but I believe this is still cheaper compared to setup some Rewrite Rules on the Application Gateway.
+
+### Azure Storage Access
+
+Azure Storage Account are setup to only allow the Application Gateway and myIP to access the corresponding Data directly via the following Azure Storage Account setup:
 
 ~~~~json
 "networkAcls": {
@@ -95,7 +102,28 @@ Azure Storage Account are setup to only allow the Application Gateway and my own
 },
 ~~~~
 
-The Storage Account 
+### Azure Storage Internet Routing
+
+We did setup Azure Storage Account with [Internet Routing Preference](https://docs.microsoft.com/en-us/azure/storage/common/network-routing-preference). This will reduce the Bandwidth cost.
+
+~~~~json
+"routingPreference": {
+    "routingChoice": "InternetRouting",
+    "publishMicrosoftEndpoints": false,
+    "publishInternetEndpoints": false
+},
+~~~~
+
+### Cooled Blobs
+
+We did setup the Azure Blob Storage with Access Tier "Cool".
+Our expection is that we will only use "read" operations and therefore "Cool" is the most cost efficient option.
+
+~~~~json
+    },
+    "accessTier": "Cool"
+}
+~~~~
 
 ## Test URL
 
@@ -118,7 +146,7 @@ PS C:\sbapp> az deployment group create --resource-group ru2-rg --mode complete 
 ~~~~
 
 ## Usefull Links
-- ![Use Azure Storage blob inventory to manage blob data](https://docs.microsoft.com/en-us/azure/storage/blobs/blob-inventory)
+- [Use Azure Storage blob inventory to manage blob data](https://docs.microsoft.com/en-us/azure/storage/blobs/blob-inventory)
  - The Azure Storage blob inventory feature provides an overview of your blob data within a storage account. Use the inventory report to understand your total data size, age, encryption status, and so on. The report provides an overview of your data for business and compliance requirements. Once enabled, an inventory report is automatically created daily.
 
 
