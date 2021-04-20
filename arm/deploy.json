@@ -53,7 +53,6 @@
         "storageAccountName01": "[concat(parameters('prefix'),'001')]",
         "storageAccountName02": "[concat(parameters('prefix'),'002')]",
         "publicIPName": "[concat(parameters('prefix'),'-pip-001')]",
-        "resourceGroupName": "[concat(parameters('prefix'),'-rg')]",
         "virtualNetworkName": "[concat(parameters('prefix'),'-appgw-vnet')]",
         "subnetName": "[concat(parameters('prefix'),'-appgw-subnet')]",
         "applicationGatewayName": "[concat(parameters('prefix'),'-appgw')]",
@@ -68,12 +67,6 @@
         "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]"
     },
     "resources": [
-        {
-            "type": "Microsoft.Resources/resourceGroups",
-            "apiVersion": "2018-05-01",
-            "location": "[parameters('location')]",
-            "name": "[variables('resourceGroupName')]"
-        },
         {
             "type": "Microsoft.Network/publicIPAddresses",
             "apiVersion": "2020-11-01",

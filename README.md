@@ -63,7 +63,7 @@ chpinoto@cpt-surfacebook1:/mnt/c/Users/chpinoto/workspace/az-storagesharding/ign
 The following ARM Template will deploy the corresponding Setup:
 
 ~~~~pwsh
-PS C:\sbapp> az deployment create --mode Incremental --name create --template-file ./arm/deploy.json --confirm-with-what-if
+PS C:\sbapp> az deployment create --resource-group <RESOURCE-GROUP-NAME> --mode Incremental --name create --template-file ./arm/deploy.json
 ~~~~
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcpinotossi%2Faz-storagesharding%2Fmain%2Farm%2Fdeploy.json)
