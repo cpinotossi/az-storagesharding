@@ -60,7 +60,7 @@ chpinoto@cpt-surfacebook1:/mnt/c/Users/chpinoto/workspace/az-storagesharding/ign
 
 ## Deploy ARM Template
 
-The following ARM Template will deploy the corresponding Setup:
+The ARM Template [./arm/deploy.json](./arm/deploy.json) will deploy the corresponding Setup:
 
 ~~~~pwsh
 PS C:\sbapp> az deployment group create --resource-group <RESOURCE-GROUP-NAME> --mode Incremental --name create --template-file ./arm/deploy.json -p @ignore/deploy.parameters.json
