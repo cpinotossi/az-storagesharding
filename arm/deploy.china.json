@@ -3,7 +3,7 @@
     "contentVersion": "1.0.0.0",
     "parameters": {
         "prefix": {
-            "defaultValue": "ru",
+            "defaultValue": "ruch",
             "type": "String",
             "metadata": {
                 "description": "Prefix which will be added to all components"
@@ -17,7 +17,7 @@
         },
         "storageDomain": {
             "type": "string",
-            "defaultValue": "blob.core.windows.net",
+            "defaultValue": "blob.core.chinacloudapi.cn",
             "allowedValues": [
                 "blob.core.windows.net",
                 "blob.core.chinacloudapi.cn"
@@ -86,11 +86,6 @@
                 "name": "Standard",
                 "tier": "Regional"
             },
-            "zones": [
-                "1",
-                "2",
-                "3"
-            ],
             "properties": {
                 "publicIPAddressVersion": "IPv4",
                 "publicIPAllocationMethod": "Static",
@@ -170,11 +165,6 @@
             },
             "kind": "StorageV2",
             "properties": {
-                "routingPreference": {
-                    "routingChoice": "InternetRouting",
-                    "publishMicrosoftEndpoints": false,
-                    "publishInternetEndpoints": false
-                },
                 "minimumTlsVersion": "TLS1_2",
                 "allowBlobPublicAccess": true,
                 "allowSharedKeyAccess": true,
@@ -261,11 +251,6 @@
             },
             "kind": "StorageV2",
             "properties": {
-                "routingPreference": {
-                    "routingChoice": "InternetRouting",
-                    "publishMicrosoftEndpoints": false,
-                    "publishInternetEndpoints": false
-                },
                 "minimumTlsVersion": "TLS1_2",
                 "allowBlobPublicAccess": true,
                 "allowSharedKeyAccess": true,
@@ -348,11 +333,6 @@
                 "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPName'))]",
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName01'))]",
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName02'))]"
-            ],
-            "zones": [
-                "1",
-                "2",
-                "3"
             ],
             "properties": {
                 "sku": {

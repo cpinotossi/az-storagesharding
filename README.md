@@ -63,11 +63,20 @@ chpinoto@cpt-surfacebook1:/mnt/c/Users/chpinoto/workspace/az-storagesharding/ign
 The following ARM Template will deploy the corresponding Setup:
 
 ~~~~pwsh
-PS C:\sbapp> az deployment create --resource-group <RESOURCE-GROUP-NAME> --mode Incremental --name create --template-file ./arm/deploy.json
+PS C:\sbapp> az deployment group create --resource-group <RESOURCE-GROUP-NAME> --mode Incremental --name create --template-file ./arm/deploy.json -p @ignore/deploy.parameters.json
 ~~~~
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcpinotossi%2Faz-storagesharding%2Fmain%2Farm%2Fdeploy.json)
 
+### China Deployment
+
+We also generated a ARM Template for the Azure China Region. The following points need to be considered in case of China:
+
+- Application Gateway V2 is only supported in certain China Regions (we used "China North 2").
+- Availability Zones for Application Gateway are not supported.
+- Availability Zones for Public IP are not supported.
+- Routing Preference for Storage Account are not supported.
+- Make sure to choose the right Storage Domain for China ("blob.core.chinacloudapi.cn").
 
 ### DNS Entry
 
