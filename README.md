@@ -70,7 +70,7 @@ PS C:\sbapp> az deployment group create --resource-group <RESOURCE-GROUP-NAME> -
 
 ### China Deployment
 
-We also generated a ARM Template for the Azure China Region. The following points need to be considered in case of China:
+We also generated a ARM Template ([./arm/deploy.china.json](./arm/deploy.china.json)) for the Azure China Region. The following points need to be considered in case of China:
 
 - Application Gateway V2 is only supported in certain China Regions (we used "China North 2").
 - Availability Zones for Application Gateway are not supported.
