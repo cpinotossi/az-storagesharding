@@ -47,30 +47,82 @@ source: [Storage Rest API Error Codes](https://docs.microsoft.com/en-us/rest/api
 In case we like to serve a single blob with +500 req/sec we will need to use multiple storage accounts.
 
 To loadbalance between the Storage Accounts we are going to use Application Gateway:
-![alt text](images/azss.001.png)
+![Overview](images/azss.001.png)
 
+## How to deploy
 
-## Create an SSL Certificate
+### Create Azure Key Vault
 
-In case you like to serve the content via HTTPS you will need to create an Server Ceriticate (pfx) and provide it base64 encoded inside the ARM template.
+Request will be served via https.
+The corresponding server certificate will be created and stored inside Azure Key Vault.
+
+Update parameter file [parameters.json](./deploy.parameters.json).
+
+- prefix: Use a unique string. The prefix will be used in front of each azure resources but also become part of the blob storage account FQDN.
+- regionPairA: Location, Azure Region (e.g. westeurope}.
+- userAdminObjectId: GUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx) of the user/service principal which will deploy the ARM templates.
+
+Create Azure Key Vault:
+
+#### via Azure CLI
 
 ~~~~bash
-chpinoto@cpt-surfacebook1:/mnt/c/Users/chpinoto/workspace/az-storagesharding/ignore$ cat <DOMAIN>.pfx | base64 > <DOMAIN>.pfx.base64.txt
+$ az deployment group create --mode Incremental -n {deployment name} -g {resource group name} --template-file ./arm/deploy.keyvault.json -p @deploy.keyvault.parameters.json
 ~~~~
 
-## Deploy ARM Template
+[![Launch Cloud Shell](https://shell.azure.com/images/launchcloudshell.png "Launch Cloud Shell")](https://shell.azure.com/bash)
 
-The ARM Template [./arm/deploy.json](./arm/deploy.json) will deploy the corresponding Setup:
+#### via Azure Portal
 
-~~~~pwsh
-PS C:\sbapp> az deployment group create --resource-group <RESOURCE-GROUP-NAME> --mode Incremental --name create --template-file ./arm/deploy.json -p @ignore/deploy.parameters.json
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcpinotossi%2Faz-storagesharding%2Fmain%2Farm%2Fdeploy.keyvault.json)
+
+### Create Certificate inside Azure Key Vault
+
+Update "subject" value of azure certificate policy [certificate.policy.json](./certificate.policy.json) with your certificate CN (e.g download.sample.com).
+
+~~~~JSON
+"subject": "CN={REPLACE}",
 ~~~~
+
+Create Certificate via Azure CLI:
+
+~~~~bash
+$ az keyvault certificate create --vault-name {prefix}-01-kv -n {your-suffix}-01-certificate-01-kv --policy @certificate.policy.json
+~~~~
+
+[![Launch Cloud Shell](https://azure.microsoft.com/svghandler/cloud-shell/?width=50 "Launch Cloud Shell")](https://shell.azure.com/bash)
+
+IMPORTANT: Replace value {your-suffix} of parameter "-n".
+
+## Deploy Application Gateway and rest
+
+Update parameter file [parameters.json](./deploy.parameters.json).
+
+- prefix: Use the same unique string as used during the Azure Key Vault deployment.
+- regionPairA: Use the same Location as used during the Azure Key Vault deployment.
+- regionPairB: Look up the corresponding pair Azure Region [here](https://docs.microsoft.com/en-us/azure/best-practices-availability-paired-regions#azure-regional-pairs).
+- myip: IP which will be whitelisted on the Azure Storage Accounts.
+- certificationCN: FQDN, same as used during the subject CN inside the certificate.
+
+via Azure CLI
+
+~~~~bash
+$ az deployment group create --mode Incremental -n {deployment name} -g {resource group name} --template-file ./arm/deploy.json -p @deploy.parameters.json
+~~~~
+
+[![Launch Cloud Shell](https://azure.microsoft.com/svghandler/cloud-shell/?width=50 "Launch Cloud Shell")](https://shell.azure.com/bash)
+
+via Azure Portal
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fcpinotossi%2Faz-storagesharding%2Fmain%2Farm%2Fdeploy.json)
 
+### After Deployment
+
+![Overview after Deployment](images/azss.002.png)
+
 ### China Deployment
 
-We also generated a ARM Template ([./arm/deploy.china.json](./arm/deploy.china.json)) for the Azure China Region. The following points need to be considered in case of China:
+The following points need to be considered in case of China:
 
 - Application Gateway V2 is only supported in certain China Regions (we used "China North 2").
 - Availability Zones for Application Gateway are not supported.
@@ -87,7 +139,6 @@ In case you like to test via your Domain directly you will need to add an A Reco
 The ARM Template will deploy two Storage Account.
 The Application Gateway will load balance incoming request between both Storage Account.
 To make this work we will need to store the same Data under the same Container on both Storage Accounts.
-This will double our Storage cost but I believe this is still cheaper compared to setup some Rewrite Rules on the Application Gateway.
 
 ### Azure Storage Access
 
@@ -116,7 +167,7 @@ Azure Storage Account are setup to only allow the Application Gateway and myIP t
 
 ### Azure Storage Internet Routing
 
-We did setup Azure Storage Account with [Internet Routing Preference](https://docs.microsoft.com/en-us/azure/storage/common/network-routing-preference). This will reduce the Bandwidth cost.
+You can setup Azure Storage Account with [Internet Routing Preference](https://docs.microsoft.com/en-us/azure/storage/common/network-routing-preference). This will reduce the Bandwidth cost.
 
 ~~~~json
 "routingPreference": {
@@ -126,7 +177,7 @@ We did setup Azure Storage Account with [Internet Routing Preference](https://do
 },
 ~~~~
 
-### Cooled Blobs
+### Cooled access tier for Blobs
 
 We did setup the Azure Blob Storage with Access Tier "Cool".
 Our expection is that we will only use "read" operations and therefore "Cool" is the most cost efficient option.
@@ -139,7 +190,10 @@ Our expection is that we will only use "read" operations and therefore "Cool" is
 
 ## Test URL
 
+IMPORTANT: You will need to upload a file with the name "test.txt" under the container "test" of each Storage Account first.
+
 Access the file directly via the blob storage
+NOTE: Works only if you whitelisted your IP.
 
 ~~~~bash
 curl -v -k curl -v -k https://<STORAGE-ACCOUNT-NAME>.blob.core.windows.net/test/test.txt
@@ -151,10 +205,10 @@ Access via the Application Gateway
 curl -v -k curl -v -k https://<YOUR-DOMAIN>/test
 ~~~~
 
-Clean Up
+## Clean Up
 
 ~~~~pwsh
-PS C:\sbapp> az deployment group create --resource-group ru2-rg --mode complete --name delete-ru2 --template-file ./arm/empty.json
+PS C:\sbapp> az deployment group create --resource-group {resource group name} --mode complete --name delete --template-file ./arm/empty.json
 ~~~~
 
 ## Usefull Links

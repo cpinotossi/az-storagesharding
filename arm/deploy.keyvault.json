@@ -1,0 +1,170 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "prefix": {
+            "defaultValue": "ru1",
+            "minLength": 3,
+            "maxLength": 24,
+            "type": "String",
+            "metadata": {
+                "description": "Prefix which will be added to all components"
+            }
+        },
+        "regionPairA": {
+            "type": "string",
+            "minLength": 1,
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+        },
+        "userAdminObjectId": {
+            "type": "string",
+            "metadata": {
+                "description": "Admin of Azure Key Vault Certificates and Secrets. Same user as used for ARM deployment."
+            }
+        }
+    },
+    "variables": {
+        "userManagedIdentityName": "[concat(parameters('prefix'),'-umi')]",
+        "userManagedIdentityId": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('userManagedIdentityName'))]",
+        "keyVault01Name": "[concat(parameters('prefix'),'-01-kv')]",
+        "keyVault01Certificate01Name": "[concat(parameters('prefix'),'-01-certificate-01-kv')]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+            "apiVersion": "2018-11-30",
+            "name": "[variables('userManagedIdentityName')]",
+            "location": "[parameters('regionPairA')]"
+        },
+        {
+            "type": "Microsoft.KeyVault/vaults",
+            "apiVersion": "2021-04-01-preview",
+            "name": "[variables('keyvault01Name')]",
+            "location": "westeurope",
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('userManagedIdentityName'))]"
+            ],
+            "properties": {
+                "sku": {
+                    "family": "A",
+                    "name": "Standard"
+                },
+                "tenantId": "[reference(variables('userManagedIdentityId')).tenantId]",
+                "networkAcls": {
+                    "bypass": "AzureServices",
+                    "defaultAction": "Allow",
+                    "ipRules": [],
+                    "virtualNetworkRules": []
+                },
+                "accessPolicies": [
+                     {
+                        "tenantId": "[reference(variables('userManagedIdentityId')).tenantId]",
+                        "objectId": "[parameters('userAdminObjectId')]",
+                        "permissions": {
+                            "keys": [],
+                            "secrets": [
+                                "Get",
+                                "List",
+                                "Set",
+                                "Delete",
+                                "Recover",
+                                "Backup",
+                                "Restore"
+                            ],
+                            "certificates": [
+                                "Get",
+                                "List",
+                                "Update",
+                                "Create",
+                                "Import",
+                                "Delete",
+                                "Recover",
+                                "Backup",
+                                "Restore",
+                                "ManageContacts",
+                                "ManageIssuers",
+                                "GetIssuers",
+                                "ListIssuers",
+                                "SetIssuers",
+                                "DeleteIssuers"
+                            ]
+                        }
+                    },
+                    {
+                        "tenantId": "[reference(variables('userManagedIdentityId')).tenantId]",
+                        "objectId": "[reference(variables('userManagedIdentityId')).principalId]",
+                        "permissions": {
+                            "keys": [],
+                            "secrets": [
+                                "Get"
+                            ],
+                            "certificates": [
+                                "Get",
+                                "List"
+                            ]
+                        }
+                    }
+                ],
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": true,
+                "enableSoftDelete": false,
+                "softDeleteRetentionInDays": 7,
+                "enableRbacAuthorization": false,
+                "vaultUri": "[concat('https://', variables('keyvault01Name'), '.vault.azure.net/')]"
+            }
+        }
+        /*,
+        {
+            "type": "Microsoft.KeyVault/vaults/keys",
+            "apiVersion": "2021-04-01-preview",
+            "name": "[concat(variables('keyvault01Name'), '/',variables('keyVault01Certificate01Name'))]",
+            "location": "[parameters('regionPairA')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyvault01Name'))]"
+            ],
+            "properties": {
+                "attributes": {
+                    "enabled": true,
+                    "nbf": 1617801462,
+                    "exp": 1649338062
+                }
+            }
+        },
+        {
+            "type": "Microsoft.KeyVault/vaults/secrets",
+            "apiVersion": "2021-04-01-preview",
+            "name": "[concat(variables('keyvault01Name'), '/', variables('keyVault01Certificate01Name'))]",
+            "location": "westeurope",
+            "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyvault01Name'))]"
+            ],
+            "properties": {
+                "contentType": "application/x-pkcs12",
+                "attributes": {
+                    "enabled": true,
+                    "nbf": 1617801462,
+                    "exp": 1649338062
+                }
+            }
+        }
+        */
+    ],
+    "outputs": {
+        "kvUri": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.KeyVault/vaults', variables('keyVault01Name'))).vaultUri]"
+        },
+        "miClientId": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('userManagedIdentityName'))).clientId]"
+        },
+        "miPrincipalId": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('userManagedIdentityName'))).principalId]"
+        }
+    }
+}

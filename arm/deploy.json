@@ -4,6 +4,8 @@
     "parameters": {
         "prefix": {
             "defaultValue": "ru",
+            "minLength": 3,
+            "maxLength": 24,
             "type": "String",
             "metadata": {
                 "description": "Prefix which will be added to all components"
@@ -17,6 +19,8 @@
         },
         "storageDomain": {
             "type": "string",
+            "minLength": 3,
+            "maxLength": 24,
             "defaultValue": "blob.core.windows.net",
             "allowedValues": [
                 "blob.core.windows.net",
@@ -26,62 +30,59 @@
                 "description": "Azure Storage Blob Domain."
             }
         },
-        "location": {
+        "regionPairA": {
             "type": "string",
             "defaultValue": "[resourceGroup().location]",
             "metadata": {
                 "description": "Location for all resources."
             }
         },
+        "regionPairB": {
+            "type": "string",
+            "defaultValue": "northeurope",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+        },
         "certificationCN": {
             "type": "String",
+            "minLength": 1,
             "metadata": {
                 "description": "CN of the Server Cerificate, same as the Domain name. e.g. www.customer.com"
-            }
-        },
-        "containerName": {
-            "defaultValue": "test",
-            "type": "String",
-            "metadata": {
-                "description": "Container Name used inside the Storage Accounts"
-            }
-        },
-        "certificationData": {
-            "type": "securestring",
-            "metadata": {
-                "description": "Base-64 encoded the .pfx file"
-            }
-        },
-        "certificationPassword": {
-            "type": "securestring",
-            "metadata": {
-                "description": "Password for .pfx certificate"
             }
         }
     },
     "variables": {
-        "storageAccountName01": "[concat(parameters('prefix'),'001')]",
-        "storageAccountName02": "[concat(parameters('prefix'),'002')]",
-        "publicIPName": "[concat(parameters('prefix'),'-pip-001')]",
-        "virtualNetworkName": "[concat(parameters('prefix'),'-appgw-vnet')]",
-        "subnetName": "[concat(parameters('prefix'),'-appgw-subnet')]",
-        "applicationGatewayName": "[concat(parameters('prefix'),'-appgw')]",
-        "applicationGatewayBackendAddressPoolName": "[concat(parameters('prefix'),'-appgw-backendpool')]",
-        "applicationGatewayBackendHTTPSettingName": "[concat(parameters('prefix'),'-appgw-backendsetting')]",
-        "applicationGatewayFrontPortName": "[concat(parameters('prefix'),'-appgw-frontport')]",
-        "applicationGatewayFrontIPName": "[concat(parameters('prefix'),'-appgw-frontip')]",
-        "applicationGatewayRoutingRuleName": "[concat(parameters('prefix'),'-appgw-routingrule')]",
-        "applicationGatewayListenerName": "[concat(parameters('prefix'),'-appgw-listener')]",
-        "applicationGatewayProbeName": "[concat(parameters('prefix'),'-appgw-probe')]",
-        "vnetRef": "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
-        "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]"
+        "storageAccount01Name": "[concat(parameters('prefix'),'001')]",
+        "storageAccount02Name": "[concat(parameters('prefix'),'002')]",
+        "storageAccountBlobContainerTestName": "test",
+        "publicIP01Name": "[concat(parameters('prefix'),'-01-pip')]",
+        "virtualNetwork01Name": "[concat(parameters('prefix'),'-01-appgw-vnet')]",
+        "subnet01Name": "[concat(parameters('prefix'),'-01-appgw-subnet')]",
+        "virtualNetwork01Ref": "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetwork01Name'))]",
+        "subnet01Ref": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetwork01Name'), variables('subnet01Name'))]",
+        "applicationGateway01Name": "[concat(parameters('prefix'),'-01-appgw')]",
+        "applicationGateway01BackendAddressPoolName": "[concat(parameters('prefix'),'-01-appgw-backendpool')]",
+        "applicationGateway01BackendHTTPSettingName": "[concat(parameters('prefix'),'-01-appgw-backendsetting')]",
+        "applicationGateway01FrontPortName": "[concat(parameters('prefix'),'-01-appgw-frontport')]",
+        "applicationGateway01FrontIPName": "[concat(parameters('prefix'),'-01-appgw-frontip')]",
+        "applicationGateway01RoutingRuleName": "[concat(parameters('prefix'),'-01-appgw-routingrule')]",
+        "applicationGateway01ListenerName": "[concat(parameters('prefix'),'-01-appgw-listener')]",
+        "applicationGateway01ProbeName": "[concat(parameters('prefix'),'-01-appgw-probe')]",
+        "userManagedIdentityName": "[concat(parameters('prefix'),'-umi')]",
+        "userManagedIdentityId": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('userManagedIdentityName'))]",
+        "trafficManagerProfileName": "[concat(parameters('prefix'),'-tmp')]",
+        "trafficManagerRelativeName": "[concat(parameters('prefix'),'-tm')]",
+        "trafficManagerEndpointName01": "[concat(parameters('prefix'),'-01-ep-tm')]",
+        "keyVault01Name": "[concat(parameters('prefix'),'-01-kv')]",
+        "keyVault01Certificate01Name": "[concat(parameters('prefix'),'-01-certificate-01-kv')]"
     },
     "resources": [
         {
             "type": "Microsoft.Network/publicIPAddresses",
             "apiVersion": "2020-11-01",
-            "name": "[variables('publicIPName')]",
-            "location": "[parameters('location')]",
+            "name": "[variables('publicIP01Name')]",
+            "location": "[parameters('regionPairA')]",
             "sku": {
                 "name": "Standard",
                 "tier": "Regional"
@@ -99,46 +100,102 @@
             }
         },
         {
+            "type": "Microsoft.Network/trafficManagerProfiles",
+            "apiVersion": "2018-04-01",
+            "name": "[variables('trafficManagerProfileName')]",
+            "location": "global",
+            "properties": {
+                "profileStatus": "Enabled",
+                "trafficRoutingMethod": "Weighted",
+                "dnsConfig": {
+                    "relativeName": "[variables('trafficManagerRelativeName')]",
+                    "ttl": 5
+                },
+                "monitorConfig": {
+                    "profileMonitorStatus": "Online",
+                    "protocol": "HTTPS",
+                    "port": 443,
+                    "path": "/test/test.txt",
+                    "intervalInSeconds": 30,
+                    "toleratedNumberOfFailures": 3,
+                    "timeoutInSeconds": 10,
+                    "customHeaders": [
+                        {
+                            "name": "host",
+                            "value": "[parameters('certificationCN')]"
+                        }
+                    ]
+                },
+                "endpoints": [
+                    {
+                        "id": "[concat(resourceId('Microsoft.Network/trafficManagerProfiles', variables('trafficManagerProfileName')), concat('/externalEndpoints/', variables('trafficManagerEndpointName01')))]",
+                        "name": "[variables('trafficManagerEndpointName01')]",
+                        "type": "Microsoft.Network/trafficManagerProfiles/externalEndpoints",
+                        "properties": {
+                            "endpointStatus": "Enabled",
+                            "endpointMonitorStatus": "Online",
+                            "target": "[reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIP01Name'))).ipAddress]",
+                            "weight": 1,
+                            "priority": 1
+                        }
+                    }
+                ],
+                "trafficViewEnrollmentStatus": "Disabled"
+            }
+        },
+        {
             "type": "Microsoft.Network/virtualNetworks",
             "apiVersion": "2020-11-01",
-            "name": "[variables('virtualNetworkName')]",
-            "location": "[parameters('location')]",
+            "name": "[variables('virtualNetwork01Name')]",
+            "location": "[parameters('regionPairA')]",
             "properties": {
                 "addressSpace": {
                     "addressPrefixes": [
                         "172.17.0.0/16"
                     ]
                 },
-                "subnets": [
-                    {
-                        "name": "[variables('subnetName')]",
-                        "properties": {
-                            "addressPrefix": "172.17.0.0/24",
-                            "serviceEndpoints": [
-                                {
-                                    "service": "Microsoft.Storage",
-                                    "locations": [
-                                        "[parameters('location')]",
-                                        "northeurope"
-                                    ]
-                                }
-                            ],
-                            "delegations": [],
-                            "privateEndpointNetworkPolicies": "Enabled",
-                            "privateLinkServiceNetworkPolicies": "Enabled"
-                        }
-                    }
-                ],
                 "virtualNetworkPeerings": [],
                 "enableDdosProtection": false
-            }
+            },
+            "resources": [
+                {
+                    "type": "subnets",
+                    "apiVersion": "2020-11-01",
+                    "name": "[variables('subnet01Name')]",
+                    "dependsOn": [
+                        "[variables('virtualNetwork01Ref')]"
+                    ],
+                    "properties": {
+                        "addressPrefix": "172.17.0.0/24",
+                        "serviceEndpoints": [
+                            {
+                                "service": "Microsoft.Storage",
+                                "locations": [
+                                    "[parameters('regionPairA')]",
+                                    "[parameters('regionPairA')]"
+                                ]
+                            },
+                            {
+                                "service": "Microsoft.KeyVault",
+                                "locations": [
+                                    "*"
+                                ]
+                            }
+                        ],
+                        "delegations": [],
+                        "privateEndpointNetworkPolicies": "Enabled",
+                        "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                }
+            ]
         },
+        /*
         {
             "type": "Microsoft.Network/virtualNetworks/subnets",
             "apiVersion": "2020-11-01",
-            "name": "[concat(variables('virtualNetworkName'), '/',variables('subnetName'))]",
+            "name": "[concat(variables('virtualNetwork01Name'), '/',variables('subnet01Name'))]",
             "dependsOn": [
-                "[variables('vnetRef')]"
+                "[variables('virtualNetwork01Ref')]"
             ],
             "properties": {
                 "addressPrefix": "172.17.0.0/24",
@@ -146,8 +203,14 @@
                     {
                         "service": "Microsoft.Storage",
                         "locations": [
-                            "[parameters('location')]",
-                            "northeurope"
+                            "[parameters('regionPairA')]",
+                            "[parameters('regionPairA')]"
+                        ]
+                    },
+                    {
+                        "service": "Microsoft.KeyVault",
+                        "locations": [
+                            "*"
                         ]
                     }
                 ],
@@ -156,13 +219,14 @@
                 "privateLinkServiceNetworkPolicies": "Enabled"
             }
         },
+        */
         {
             "type": "Microsoft.Storage/storageAccounts",
             "apiVersion": "2021-01-01",
-            "name": "[variables('storageAccountName01')]",
-            "location": "[parameters('location')]",
+            "name": "[variables('storageAccount01Name')]",
+            "location": "[parameters('regionPairA')]",
             "dependsOn": [
-                "[variables('subnetRef')]"
+                "[variables('subnet01Ref')]"
             ],
             "sku": {
                 "name": "Standard_LRS",
@@ -171,7 +235,7 @@
             "kind": "StorageV2",
             "properties": {
                 "routingPreference": {
-                    "routingChoice": "InternetRouting",
+                    //"routingChoice": "InternetRouting",
                     "publishMicrosoftEndpoints": false,
                     "publishInternetEndpoints": false
                 },
@@ -183,7 +247,7 @@
                     "bypass": "AzureServices",
                     "virtualNetworkRules": [
                         {
-                            "id": "[variables('subnetRef')]",
+                            "id": "[variables('subnet01Ref')]",
                             "action": "Allow",
                             "state": "Succeeded"
                         }
@@ -216,9 +280,9 @@
         {
             "type": "Microsoft.Storage/storageAccounts/blobServices",
             "apiVersion": "2021-01-01",
-            "name": "[concat(variables('storageAccountName01'), '/default')]",
+            "name": "[concat(variables('storageAccount01Name'), '/default')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName01'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount01Name'))]"
             ],
             "sku": {
                 "name": "Standard_LRS",
@@ -236,10 +300,10 @@
         {
             "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
             "apiVersion": "2021-01-01",
-            "name": "[concat(variables('storageAccountName01'), '/default/', parameters('containerName'))]",
+            "name": "[concat(variables('storageAccount01Name'), '/default/', variables('storageAccountBlobContainerTestName'))]",
             "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccountName01'), 'default')]",
-                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName01'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccount01Name'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount01Name'))]"
             ],
             "properties": {
                 "defaultEncryptionScope": "$account-encryption-key",
@@ -250,10 +314,10 @@
         {
             "type": "Microsoft.Storage/storageAccounts",
             "apiVersion": "2021-01-01",
-            "name": "[variables('storageAccountName02')]",
-            "location": "[parameters('location')]",
+            "name": "[variables('storageAccount02Name')]",
+            "location": "[parameters('regionPairA')]",
             "dependsOn": [
-                "[variables('subnetRef')]"
+                "[variables('subnet01Ref')]"
             ],
             "sku": {
                 "name": "Standard_LRS",
@@ -274,7 +338,7 @@
                     "bypass": "AzureServices",
                     "virtualNetworkRules": [
                         {
-                            "id": "[variables('subnetRef')]",
+                            "id": "[variables('subnet01Ref')]",
                             "action": "Allow",
                             "state": "Succeeded"
                         }
@@ -307,9 +371,9 @@
         {
             "type": "Microsoft.Storage/storageAccounts/blobServices",
             "apiVersion": "2021-01-01",
-            "name": "[concat(variables('storageAccountName02'), '/default')]",
+            "name": "[concat(variables('storageAccount02Name'), '/default')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName02'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount02Name'))]"
             ],
             "sku": {
                 "name": "Standard_LRS",
@@ -327,10 +391,10 @@
         {
             "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
             "apiVersion": "2021-01-01",
-            "name": "[concat(variables('storageAccountName02'), '/default/', parameters('containerName'))]",
+            "name": "[concat(variables('storageAccount02Name'), '/default/', variables('storageAccountBlobContainerTestName'))]",
             "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccountName02'), 'default')]",
-                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName02'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccount02Name'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount02Name'))]"
             ],
             "properties": {
                 "defaultEncryptionScope": "$account-encryption-key",
@@ -341,19 +405,26 @@
         {
             "type": "Microsoft.Network/applicationGateways",
             "apiVersion": "2020-11-01",
-            "name": "[variables('applicationGatewayName')]",
-            "location": "[parameters('location')]",
+            "name": "[variables('applicationGateway01Name')]",
+            "location": "[parameters('regionPairA')]",
             "dependsOn": [
-                "[variables('subnetRef')]",
-                "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPName'))]",
-                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName01'))]",
-                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName02'))]"
+                "[variables('subnet01Ref')]",
+                "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIP01Name'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount01Name'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount02Name'))]"
+                //"[resourceId('Microsoft.KeyVault/vaults', variables('keyvault01Name'))]"
             ],
             "zones": [
                 "1",
                 "2",
                 "3"
             ],
+            "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                    "[variables('userManagedIdentityId')]": {}
+                }
+            },
             "properties": {
                 "sku": {
                     "name": "Standard_v2",
@@ -364,17 +435,16 @@
                         "name": "appGatewayIpConfig",
                         "properties": {
                             "subnet": {
-                                "id": "[variables('subnetRef')]"
+                                "id": "[variables('subnet01Ref')]"
                             }
                         }
                     }
                 ],
                 "sslCertificates": [
                     {
-                        "name": "[parameters('certificationCN')]",
+                        "name": "[variables('keyVault01Certificate01Name')]",
                         "properties": {
-                            "data": "[parameters('certificationData')]",
-                            "password": "[parameters('certificationPassword')]"
+                            "keyVaultSecretId": "[concat(reference(resourceId('Microsoft.KeyVault/vaults', variables('keyVault01Name')),'2016-10-01').vaultUri,'secrets/',variables('keyVault01Certificate01Name'))]"
                         }
                     }
                 ],
@@ -383,18 +453,18 @@
                 "sslProfiles": [],
                 "frontendIPConfigurations": [
                     {
-                        "name": "[variables('applicationGatewayFrontIPName')]",
+                        "name": "[variables('applicationGateway01FrontIPName')]",
                         "properties": {
                             "privateIPAllocationMethod": "Dynamic",
                             "publicIPAddress": {
-                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPName'))]"
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIP01Name'))]"
                             }
                         }
                     }
                 ],
                 "frontendPorts": [
                     {
-                        "name": "[variables('applicationGatewayFrontPortName')]",
+                        "name": "[variables('applicationGateway01FrontPortName')]",
                         "properties": {
                             "port": 443
                         }
@@ -402,14 +472,14 @@
                 ],
                 "backendAddressPools": [
                     {
-                        "name": "[variables('applicationGatewayBackendAddressPoolName')]",
+                        "name": "[variables('applicationGateway01BackendAddressPoolName')]",
                         "properties": {
                             "backendAddresses": [
                                 {
-                                    "fqdn": "[concat(variables('storageAccountName01'),'.',parameters('storageDomain'))]"
+                                    "fqdn": "[concat(variables('storageAccount01Name'),'.',parameters('storageDomain'))]"
                                 },
                                 {
-                                    "fqdn": "[concat(variables('storageAccountName02'),'.',parameters('storageDomain'))]"
+                                    "fqdn": "[concat(variables('storageAccount02Name'),'.',parameters('storageDomain'))]"
                                 }
                             ]
                         }
@@ -417,7 +487,7 @@
                 ],
                 "backendHttpSettingsCollection": [
                     {
-                        "name": "[variables('applicationGatewayBackendHTTPSettingName')]",
+                        "name": "[variables('applicationGateway01BackendHTTPSettingName')]",
                         "properties": {
                             "port": 443,
                             "protocol": "Https",
@@ -426,24 +496,24 @@
                             "affinityCookieName": "ApplicationGatewayAffinity",
                             "requestTimeout": 20,
                             "probe": {
-                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGatewayName')), concat('/probes/', variables('applicationGatewayProbeName')))]"
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGateway01Name')), concat('/probes/', variables('applicationGateway01ProbeName')))]"
                             }
                         }
                     }
                 ],
                 "httpListeners": [
                     {
-                        "name": "[variables('applicationGatewayListenerName')]",
+                        "name": "[variables('applicationGateway01ListenerName')]",
                         "properties": {
                             "frontendIPConfiguration": {
-                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGatewayName')), '/frontendIPConfigurations/',variables('applicationGatewayFrontIPName'))]"
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGateway01Name')), '/frontendIPConfigurations/',variables('applicationGateway01FrontIPName'))]"
                             },
                             "frontendPort": {
-                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGatewayName')), '/frontendPorts/',variables('applicationGatewayFrontPortName'))]"
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGateway01Name')), '/frontendPorts/',variables('applicationGateway01FrontPortName'))]"
                             },
                             "protocol": "Https",
                             "sslCertificate": {
-                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGatewayName')), '/sslCertificates/',parameters('certificationCN'))]"
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGateway01Name')), '/sslCertificates/',variables('keyVault01Certificate01Name'))]"
                             },
                             "hostName": "[parameters('certificationCN')]",
                             "hostNames": [],
@@ -454,27 +524,27 @@
                 "urlPathMaps": [],
                 "requestRoutingRules": [
                     {
-                        "name": "[variables('applicationGatewayRoutingRuleName')]",
+                        "name": "[variables('applicationGateway01RoutingRuleName')]",
                         "properties": {
                             "ruleType": "Basic",
                             "httpListener": {
-                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGatewayName')), '/httpListeners/', variables('applicationGatewayListenerName'))]"
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGateway01Name')), '/httpListeners/', variables('applicationGateway01ListenerName'))]"
                             },
                             "backendAddressPool": {
-                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGatewayName')), '/backendAddressPools/',variables('applicationGatewayBackendAddressPoolName'))]"
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGateway01Name')), '/backendAddressPools/',variables('applicationGateway01BackendAddressPoolName'))]"
                             },
                             "backendHttpSettings": {
-                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGatewayName')), '/backendHttpSettingsCollection/',variables('applicationGatewayBackendHTTPSettingName'))]"
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', variables('applicationGateway01Name')), '/backendHttpSettingsCollection/',variables('applicationGateway01BackendHTTPSettingName'))]"
                             }
                         }
                     }
                 ],
                 "probes": [
                     {
-                        "name": "[variables('applicationGatewayProbeName')]",
+                        "name": "[variables('applicationGateway01ProbeName')]",
                         "properties": {
                             "protocol": "Https",
-                            "path": "[concat('/',parameters('containerName'))]",
+                            "path": "[concat('/',variables('storageAccountBlobContainerTestName'))]",
                             "interval": 30,
                             "timeout": 30,
                             "unhealthyThreshold": 3,
@@ -498,5 +568,91 @@
                 }
             }
         }
+        /*,
+        {
+            "type": "Microsoft.KeyVault/vaults",
+            "apiVersion": "2021-04-01-preview",
+            "name": "[variables('keyvault01Name')]",
+            "location": "westeurope",
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('userManagedIdentityName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetwork01Name'), variables('subnet01Name'))]"
+            ],
+            "properties": {
+                "sku": {
+                    "family": "A",
+                    "name": "Standard"
+                },
+                "tenantId": "[reference(variables('userManagedIdentityId')).tenantId]",
+                "networkAcls": {
+                    "bypass": "AzureServices",
+                    "defaultAction": "Allow",
+                    "ipRules": [],
+                    "virtualNetworkRules": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetwork01Name'), variables('subnet01Name'))]",
+                            "ignoreMissingVnetServiceEndpoint": false
+                        }
+                    ]
+                },
+                "accessPolicies": [
+                    {
+                        "tenantId": "[reference(variables('userManagedIdentityId')).tenantId]",
+                        "objectId": "[reference(variables('userManagedIdentityId')).principalId]",
+                        "permissions": {
+                            "keys": [],
+                            "secrets": [
+                                "Get"
+                            ],
+                            "certificates": [
+                                "Get",
+                                "List"
+                            ]
+                        }
+                    }
+                ],
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": true,
+                "enableSoftDelete": false,
+                "softDeleteRetentionInDays": 7,
+                "enableRbacAuthorization": false,
+                "vaultUri": "[concat('https://', variables('keyvault01Name'), '.vault.azure.net/')]"
+            }
+        },
+        {
+            "type": "Microsoft.KeyVault/vaults/keys",
+            "apiVersion": "2021-04-01-preview",
+            "name": "[concat(variables('keyvault01Name'), '/',variables('keyVault01Certificate01Name'))]",
+            "location": "[parameters('regionPairA')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyvault01Name'))]"
+            ],
+            "properties": {
+                "attributes": {
+                    "enabled": true,
+                    "nbf": 1617801462,
+                    "exp": 1649338062
+                }
+            }
+        },
+        {
+            "type": "Microsoft.KeyVault/vaults/secrets",
+            "apiVersion": "2021-04-01-preview",
+            "name": "[concat(variables('keyvault01Name'), '/', variables('keyVault01Certificate01Name'))]",
+            "location": "westeurope",
+            "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyvault01Name'))]"
+            ],
+            "properties": {
+                "contentType": "application/x-pkcs12",
+                "attributes": {
+                    "enabled": true,
+                    "nbf": 1617801462,
+                    "exp": 1649338062
+                }
+            }
+        }
+        */
     ]
 }

@@ -1,0 +1,15 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "prefix": {
+            "value": "{REPLACE}"
+        },
+        "regionPairA": {
+            "value": "{REPLACE e.g. westeurope}"
+        },
+        "userAdminObjectId": {
+            "value": "{REPLACE e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}"
+        }
+    }
+}
