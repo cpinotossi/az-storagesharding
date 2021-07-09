@@ -212,7 +212,6 @@ PS C:\sbapp> az deployment group create --resource-group {resource group name} -
 ~~~~
 
 ## Usefull Links
-- [Use Azure Storage blob inventory to manage blob data](https://docs.microsoft.com/en-us/azure/storage/blobs/blob-inventory)
- - The Azure Storage blob inventory feature provides an overview of your blob data within a storage account. Use the inventory report to understand your total data size, age, encryption status, and so on. The report provides an overview of your data for business and compliance requirements. Once enabled, an inventory report is automatically created daily.
 
-
+- [Ms Doc: Use Azure Storage blob inventory to manage blob data](https://docs.microsoft.com/en-us/azure/storage/blobs/blob-inventory)
+- [MS Doc: How AGW terminates TLS](https://docs.microsoft.com/en-us/azure/application-gateway/key-vault-certs)
